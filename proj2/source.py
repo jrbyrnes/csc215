@@ -141,25 +141,11 @@ for ele in x_train:
 
 
 train_NN = pd.DataFrame(train_NN)
-train_NN['y'] = obs_train
+train_NN['out'] = obs_train
 test_NN = pd.DataFrame(test_NN)
-test_NN['y'] = obs_test
+test_NN['out'] = obs_test
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################NEED TO COORDINATE FOLLOWING CODE TO CODE ABOVE
 def to_xy(df, target):
     result = []
     for x in df.columns:
@@ -177,11 +163,11 @@ def to_xy(df, target):
         # Regression
         return df[result].values.astype(np.float32), df[target].values.astype(np.float32)
 
-x,y = to_xy(dt, "y")
-xt,yt = to_xy(test, "y")
 
+##this part is buggwed
+train_NN,y_train2 = to_xy(dt, 'out')
+test_NN, y_test2 = to_xy(test, 'out')
 
-##match data names
 
 myDict2 = dict()
 activationType = ['relu', 'sigmoid', 'tanh']
@@ -195,12 +181,12 @@ for act in activationType:
         for i in range(5):
             print(i)
             model_NN = Sequential()
-            model_NN.add(Dense(20, input_dim=x_train_NN.shape[1], activation='relu'))
+            model_NN.add(Dense(20, input_dim=train_NN.shape[1], activation='relu'))
             model_NN.add(Dense(10, activation='softmax'))
             model_NN.add(Dense(1))
             model_NN.compile(loss='mean_squared_error', optimizer='adam')        
             monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
-            model_NN.fit(x_train_NN,obs_train,validation_data=(x_test_NN,obs_test),callbacks=[monitor, checkpointer],verbose=2,epochs=100)
+            model_NN.fit(train_NN,y_train2,validation_data=(test_NN,y_test2),callbacks=[monitor, checkpointer],verbose=2,epochs=100)
 
         print('Training finished...Loading the best model')  
         print()
