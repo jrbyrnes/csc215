@@ -110,14 +110,24 @@ for opt in optimizerType:
     myDict.update({iteration : (opt, model)})
     iteration += 1
 
-
+def chart_regression(pred,y,sort=True):
+    t = pd.DataFrame({'pred' : pred.flatten(), 'y' : y.flatten()})
+    if sort:
+        t.sort_values(by=['y'],inplace=True)
+    a = plt.plot(t['y'].tolist(),label='expected')
+    b = plt.plot(t['pred'].tolist(),label='prediction')
+    plt.ylabel('output')
+    plt.legend()
+    plt.show()
 
 
 for ele in myDict.values():
     print('Analyzing model with optimizer {}'.format(ele[0]))
     model = ele[1]
     pred = model.predict(x_test)
+    obs_test = np.asarray(obs_test)
     score = np.sqrt(metrics.mean_squared_error(pred,obs_test))
+    chart_regression(pred,obs_test)
     print("Score (RMSE): {}".format(score))
 
 
@@ -164,9 +174,8 @@ def to_xy(df, target):
         return df[result].values.astype(np.float32), df[target].values.astype(np.float32)
 
 
-##this part is buggwed
-train_NN,y_train2 = to_xy(dt, 'out')
-test_NN, y_test2 = to_xy(test, 'out')
+train_NN,y_train2 = to_xy(train_NN, 'out')
+test_NN, y_test2 = to_xy(test_NN, 'out')
 
 
 myDict2 = dict()
@@ -176,20 +185,33 @@ iteration = 0
 
 for act in activationType:
     for opt in optimizerType:
-        checkpointer = ModelCheckpoint(filepath="best_weights2.hdf5", verbose=0, save_best_only=True) # save best model
+        checkpointer2 = ModelCheckpoint(filepath="C:/Users/Owner/Documents/Sac State/csc215/proj2/best_weights2.hdf5", verbose=0, save_best_only=True) # save best model
         
         for i in range(5):
             print(i)
             model_NN = Sequential()
             model_NN.add(Dense(20, input_dim=train_NN.shape[1], activation='relu'))
-            model_NN.add(Dense(10, activation='softmax'))
+            model_NN.add(Dense(10, input_dim=train_NN.shape[1], activation='relu'))
             model_NN.add(Dense(1))
             model_NN.compile(loss='mean_squared_error', optimizer='adam')        
             monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
-            model_NN.fit(train_NN,y_train2,validation_data=(test_NN,y_test2),callbacks=[monitor, checkpointer],verbose=2,epochs=100)
+            model_NN.fit(train_NN,y_train2,validation_data=(test_NN,y_test2),callbacks=[monitor, checkpointer2],verbose=2,epochs=100)
 
         print('Training finished...Loading the best model')  
         print()
-        model.load_weights('best_weights2.hdf5') # load weights from best model
+        model_NN.load_weights("C:/Users/Owner/Documents/Sac State/csc215/proj2/best_weights2.hdf5") # load weights from best model
         myDict2.update({iteration : (act, opt, model)})
         iteration += 1
+
+
+for ele in myDict2.values():
+    print('Analyzing model with activation {} and optimizer {}'.format(ele[0], ele[1]))
+    model_NN_b = ele[2]
+    pred_NN = model_NN_b.predict(test_NN)
+    pred_NN = np.argmax(pred_NN,axis=1)
+    
+    y_true_NN = np.argmax(obs_test,axis=1)
+    score_NN = np.sqrt(metrics.mean_squared_error(pred_NN,obs_test))
+    chart_regression(pred_NN,obs_test)
+    print("Score (RMSE): {}".format(score_NN))
+    
