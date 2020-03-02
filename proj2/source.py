@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 25 19:29:37 2020
-
-@author: Owner
-"""
-
 import pandas as pd
 import io
 import requests
@@ -16,7 +9,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
-import scikitplot as skplt
 
 from tensorflow.keras import optimizers
 from tensorflow.keras.models import Sequential
@@ -29,6 +21,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 ##DATA IMPORTING && PREPROCESSING
 ####################
 dt = pd.read_csv('C:/Users/Owner/Documents/Sac State/CSC215_P2_Stock_Price.csv')
+dt['Close_y'] = dt['Close']
 split = int(0.7 * len(dt))
 df_train = dt[:split]
 df_test = dt[split:len(dt)]
@@ -36,8 +29,29 @@ df_test = dt[split:len(dt)]
 print("Training set has {} records.".format(len(df_train)))
 print("Test set has {} records.".format(len(df_test)))
 
+close_train = df_train['Close_y']
+close_test = df_test['Close_y']
+
+def encode_numeric_zscore(df, name, mean=None, sd=None):
+    if mean is None:
+        mean = df[name].mean()
+        
+    if sd is None:
+        sd = df[name].std()
+        
+    df[name] = (df[name] - mean) / sd
+
+normal_list = ['Open', 'High', 'Low', 'Volume', 'Close'];
+
+for element in normal_list:
+    encode_numeric_zscore(df_train, element)
+    encode_numeric_zscore(df_test, element)    
+
+
+
 params_train = df_train[['Open', 'High', 'Low', 'Volume', 'Close']].values.tolist()
-params_test = df_test[['Open', 'High', 'Low', 'Volume', 'Close']].values.tolist()
+params_test = df_test[['Open', 'High', 'Low', 'Volume', 'Close',]].values.tolist()
+
 
 def to_sequences(seq_size, data):
     x = []
@@ -56,10 +70,14 @@ def to_sequences(seq_size, data):
 
 SEQUENCE_SIZE = 7
 x_train,y_train = to_sequences(SEQUENCE_SIZE,params_train)
-obs_train = np.asarray([item[4] for item in y_train])
+obs_train = close_train[SEQUENCE_SIZE:len(close_train)].values.tolist()
+obs_train.pop()
+obs_train = np.asarray(obs_train)
 
 x_test,y_test = to_sequences(SEQUENCE_SIZE,params_test)
-obs_test = np.asarray([item[4] for item in y_test])
+obs_test = close_test[SEQUENCE_SIZE:len(close_test)].values.tolist()
+obs_test.pop()
+obs_test = np.asarray(obs_test)
 
 print("Shape of x_train: {}".format(x_train.shape))
 print("Shape of x_test: {}".format(x_test.shape))
@@ -67,20 +85,38 @@ print("Shape of y_train: {}".format(obs_train.shape))
 print("Shape of y_test: {}".format(obs_test.shape))
 
 
-model = Sequential()
+myDict = dict()
+##activationType = ['relu', 'sigmoid', 'tanh']
+optimizerType = ['adam', 'sgd']
+iteration = 0
 
-model.add(LSTM(64, dropout=0.1, recurrent_dropout=0.1, input_shape=(SEQUENCE_SIZE, 5)))
-model.add(Dense(32))
-model.add(Dense(1))
+for opt in optimizerType:
+    checkpointer = ModelCheckpoint(filepath="C:/Users/Owner/Documents/Sac State/csc215/proj2/best_weights.hdf5", verbose=0, save_best_only=True) # save best model        
+    for i in range(2):
+        print(i)        
+        # Build network
+        model = Sequential()
+        model.add(LSTM(64, dropout=0.1, recurrent_dropout=0.1, input_shape=(SEQUENCE_SIZE, 5)))
+        model.add(Dense(32))
+        model.add(Dense(1))
+        model.compile(loss='mean_squared_error', optimizer='adam')        
+        monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
+       model.fit(x_train,obs_train,validation_data=(x_test,obs_test), callbacks=[monitor],verbose=2, epochs=100)  
 
-model.compile(loss='mean_squared_error', optimizer='adam')
 
-monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
-print('Train...')
+    print('Training finished...Loading the best model')  
+    print()
+    model.load_weights("C:/Users/Owner/Documents/Sac State/csc215/proj2/best_weights.hdf5") # load weights from best model
+    myDict.update({iteration : (opt, model)})
+    iteration += 1
 
-model.fit(x_train,obs_train,validation_data=(x_test,obs_test), callbacks=[monitor],verbose=2, epochs=3)  
 
-pred = model.predict(x_test)
-score = np.sqrt(metrics.mean_squared_error(pred,obs_test))
-print("Score (RMSE): {}".format(score))
+
+
+for ele in myDict.values():
+    print('Analyzing model with optimizer {}'.format(ele[0]))
+    model = ele[1]
+    pred = model.predict(x_test)
+    score = np.sqrt(metrics.mean_squared_error(pred,obs_test))
+    print("Score (RMSE): {}".format(score))
 
