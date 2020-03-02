@@ -101,7 +101,7 @@ for opt in optimizerType:
         model.add(Dense(1))
         model.compile(loss='mean_squared_error', optimizer='adam')        
         monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
-       model.fit(x_train,obs_train,validation_data=(x_test,obs_test), callbacks=[monitor],verbose=2, epochs=100)  
+       model.fit(x_train,obs_train,validation_data=(x_test,obs_test), callbacks=[monitor, checkpointer],verbose=2, epochs=100)  
 
 
     print('Training finished...Loading the best model')  
@@ -120,3 +120,90 @@ for ele in myDict.values():
     score = np.sqrt(metrics.mean_squared_error(pred,obs_test))
     print("Score (RMSE): {}".format(score))
 
+
+
+###Fully Connected NN
+test_NN = []
+for ele in x_test:
+    flat_list = []
+    for sublist in ele:
+        for item in sublist:
+            flat_list.append(item)
+    test_NN.append(flat_list)
+
+train_NN = []
+for ele in x_train:
+    flat_list = []
+    for sublist in ele:
+        for item in sublist:
+            flat_list.append(item)
+    train_NN.append(flat_list)
+
+
+train_NN = pd.DataFrame(train_NN)
+train_NN['y'] = obs_train
+test_NN = pd.DataFrame(test_NN)
+test_NN['y'] = obs_test
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################NEED TO COORDINATE FOLLOWING CODE TO CODE ABOVE
+def to_xy(df, target):
+    result = []
+    for x in df.columns:
+        if x != target:
+            result.append(x)
+    # find out the type of the target column. 
+    target_type = df[target].dtypes
+    target_type = target_type[0] if isinstance(target_type, collections.Sequence) else target_type
+    # Encode to int for classification, float otherwise. TensorFlow likes 32 bits.
+    if target_type in (np.int64, np.int32):
+        # Classification
+        dummies = pd.get_dummies(df[target])
+        return df[result].values.astype(np.float32), dummies.values.astype(np.float32)
+    else:
+        # Regression
+        return df[result].values.astype(np.float32), df[target].values.astype(np.float32)
+
+x,y = to_xy(dt, "y")
+xt,yt = to_xy(test, "y")
+
+
+##match data names
+
+myDict2 = dict()
+activationType = ['relu', 'sigmoid', 'tanh']
+optimizerType = ['adam', 'sgd']
+iteration = 0
+
+for act in activationType:
+    for opt in optimizerType:
+        checkpointer = ModelCheckpoint(filepath="best_weights2.hdf5", verbose=0, save_best_only=True) # save best model
+        
+        for i in range(5):
+            print(i)
+            model_NN = Sequential()
+            model_NN.add(Dense(20, input_dim=x_train_NN.shape[1], activation='relu'))
+            model_NN.add(Dense(10, activation='softmax'))
+            model_NN.add(Dense(1))
+            model_NN.compile(loss='mean_squared_error', optimizer='adam')        
+            monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
+            model_NN.fit(x_train_NN,obs_train,validation_data=(x_test_NN,obs_test),callbacks=[monitor, checkpointer],verbose=2,epochs=100)
+
+        print('Training finished...Loading the best model')  
+        print()
+        model.load_weights('best_weights2.hdf5') # load weights from best model
+        myDict2.update({iteration : (act, opt, model)})
+        iteration += 1
