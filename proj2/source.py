@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from tensorflow.keras import optimizers
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Activation, Embedding, LSTM, Conv2D
+from tensorflow.keras.layers import Dense, Activation, Embedding, LSTM
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import ModelCheckpoint
 
@@ -129,10 +129,8 @@ for ele in myDict.values():
     print("Score (RMSE): {}".format(score))
 
 
-####################
-##Fully Connected NN
-####################
 
+###Fully Connected NN
 test_NN = []
 for ele in x_test:
     flat_list = []
@@ -215,22 +213,3 @@ for ele in myDict2.values():
     chart_regression(pred_NN,obs_test)
     print("Score (RMSE): {}".format(score_NN))
     
-
-####################
-##CNN
-####################
-
-thing = [[x] for x in x_train]
-train_CNN = np.asarray(thing)
-train_CNN_y = obs_train
-
-thing = [[x] for x in x_test]
-test_CNN = np.asarray(thing)
-test_CNN_y = obs_test
-
-model_CNN = Sequential()
-model_CNN.add(Conv2D(filters = 1, kernel_size = (2, 2), activation='relu', input_shape=(1, 7, 5), data_format='channels_first'))
-model_CNN.add(Dense(1))
-model_CNN.compile(loss='mean_squared_error', optimizer=opt) 
-monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
-model_CNN.fit(train_CNN, train_CNN_y, validation_data=(test_CNN, test_CNN_y), callbacks=[monitor], verbose = 2, epochs = 100)
