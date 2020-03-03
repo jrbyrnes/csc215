@@ -83,32 +83,30 @@ print("Shape of x_train: {}".format(x_train.shape))
 print("Shape of x_test: {}".format(x_test.shape))
 print("Shape of y_train: {}".format(obs_train.shape))
 print("Shape of y_test: {}".format(obs_test.shape))
-
-
 myDict = dict()
 ##activationType = ['relu', 'sigmoid', 'tanh']
 optimizerType = ['adam', 'sgd']
 iteration = 0
 
 for opt in optimizerType:
-    checkpointer = ModelCheckpoint(filepath="C:/Users/Owner/Documents/Sac State/csc215/proj2/best_weights.hdf5", verbose=0, save_best_only=True) # save best model        
-    for i in range(2):
-        print(i)        
+    ##checkpointer = ModelCheckpoint(filepath="best_weights3.hdf5", verbose=0, save_best_only=True) # save best model        
+    ##for i in range(2):
+        ##print(i)        
         # Build network
         model = Sequential()
         model.add(LSTM(64, dropout=0.1, recurrent_dropout=0.1, input_shape=(SEQUENCE_SIZE, 5)))
         model.add(Dense(32))
         model.add(Dense(1))
-        model.compile(loss='mean_squared_error', optimizer='adam')        
+        model.compile(loss='mean_squared_error', optimizer=opt)        
         monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')        
-       model.fit(x_train,obs_train,validation_data=(x_test,obs_test), callbacks=[monitor, checkpointer],verbose=2, epochs=100)  
+        model.fit(x_train,obs_train,validation_data=(x_test,obs_test), callbacks=[monitor],verbose=2, epochs=100)  
 
 
-    print('Training finished...Loading the best model')  
-    print()
-    model.load_weights("C:/Users/Owner/Documents/Sac State/csc215/proj2/best_weights.hdf5") # load weights from best model
-    myDict.update({iteration : (opt, model)})
-    iteration += 1
+    ##print('Training finished...Loading the best model')  
+    ##print()
+    ##model.load_weights("best_weights3.hdf5") # load weights from best model
+        myDict.update({iteration : (opt, model)})
+        iteration += 1
 
 def chart_regression(pred,y,sort=True):
     t = pd.DataFrame({'pred' : pred.flatten(), 'y' : y.flatten()})
