@@ -18,7 +18,7 @@ from tensorflow.keras import optimizers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Activation, Embedding, LSTM
 from tensorflow.keras.callbacks import EarlyStopping
-# from tensorflow.keras.callbacks import ModelCheckpointß
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 dt = pd.read_csv('CSC215_P2_Stock_Price.csv')
 dt['Close_y'] = dt['Close']
