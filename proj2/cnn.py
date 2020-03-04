@@ -89,10 +89,15 @@ print("Shape of x_test: {}".format(x_test.shape))
 print("Shape of y_train: {}".format(obs_train.shape))
 print("Shape of y_test: {}".format(obs_test.shape))
 
-
-####################
-##Convolutional NN
-####################
+def chart_regression(pred,y,sort=True):
+    t = pd.DataFrame({'pred' : pred.flatten(), 'y' : y.flatten()})
+    if sort:
+        t.sort_values(by=['y'],inplace=True)
+    a = plt.plot(t['y'].tolist(),label='expected')
+    b = plt.plot(t['pred'].tolist(),label='prediction')
+    plt.ylabel('output')
+    plt.legend()
+    plt.show()
 
 def hms_string(sec_elapsed):
     h = int(sec_elapsed / (60 * 60))
@@ -100,9 +105,9 @@ def hms_string(sec_elapsed):
     s = sec_elapsed % 60
     return "{}:{:>02}:{:>05.2f}".format(h, m, s)
 
-myDict3 = dict()
-activationType = ['relu', 'sigmoid', 'tanh']
-optimizerType = ['adam', 'sgd']
+####################
+##Convolutional NN
+####################
 
 sample = 1
 digit = x_train[sample]
@@ -127,57 +132,47 @@ print('x_test shape:', x_test_CNN.shape)
 print("Training samples: {}".format(x_train_CNN.shape[0]))
 print("Test samples: {}".format(x_test_CNN.shape[0]))
 
-model_CNN = Sequential()
+myDict4 = dict()
+activationType = ['relu', 'sigmoid', 'tanh']
+optimizerType = ['adam', 'sgd']
+iteration = 0
 input_shape = (img_rows, img_cols, channels)
 
-# two conv layers
-# remember to loop through activation and optimizer
-model_CNN.add(Conv2D(32, kernel_size=(1, 1), strides=(1, 1), padding='valid',
-                 activation='relu',
-                 input_shape=input_shape))    #  in this case, input_shape = (img_rows, img_cols, 1)
-model_CNN.add(MaxPooling2D(pool_size=(1, 1), strides=None)) # (1, 1) doesnt really do anything
-model_CNN.add(Conv2D(64, (1, 1), activation='relu'))
-model_CNN.add(MaxPooling2D(pool_size=(1, 1), strides=None)) # (1, 1) doesnt really do anything
-model_CNN.add(Dropout(0.25))
+for act in activationType:
+    for opt in optimizerType:
+        checkpointer4 = ModelCheckpoint(filepath="best_weights4.hdf5", verbose=0, save_best_only=True) # save best model
 
-# dense layer
-model_CNN.add(Flatten())
+        for i in range(2):
+            print(i)
+            model_CNN = Sequential()
+            model_CNN.add(Conv2D(32, kernel_size=(1, 1), strides=(1, 1), padding='valid', activation=act, input_shape=input_shape))
+            model_CNN.add(MaxPooling2D(pool_size=(1, 1), strides=None)) # (1, 1) doesnt really do anything
+            model_CNN.add(Conv2D(64, (1, 1), activation=act))
+            model_CNN.add(MaxPooling2D(pool_size=(1, 1), strides=None)) # (1, 1) doesnt really do anything
+            model_CNN.add(Dropout(0.25))
 
-model_CNN.add(Dense(64, activation='relu'))
+            model_CNN.add(Flatten())
+            model_CNN.add(Dense(64, activation=act))
+            model_CNN.add(Dropout(0.25))
+            model_CNN.add(Dense(32, activation=act))
+            model_CNN.add(Dense(1))
+            print(model_CNN.summary())
+            model_CNN.compile(loss='mean_squared_error', optimizer=opt)
 
-model_CNN.add(Dropout(0.25))
+            monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
+            model_CNN.fit(x_train_CNN, obs_train, epochs=100, verbose=2, validation_data=(x_test_CNN, obs_test), callbacks=[monitor, checkpointer4])
 
-model_CNN.add(Dense(32, activation='relu'))
+        print('Training finished...Loading the best model')
+        print()
+        model_CNN.load_weights("best_weights4.hdf5") # load weights from best model
+        myDict4.update({iteration : (act, opt, model_CNN)})
+        iteration += 1
 
-model_CNN.add(Dense(1))
+for ele in myDict4.values():
+    print('Analyzing model with activation {} and optimizer {}'.format(ele[0], ele[1]))
+    model_CNN_b = ele[2]
+    pred_CNN = model_CNN_b.predict(x_test_CNN)
 
-print(model_CNN.summary())
-
-# COMPILE MODEL
-# -------------------
-
-
-model_CNN.compile(loss='mean_squared_error', optimizer='adam')
-
-print(x_train_CNN.shape)
-
-
-# TRAINING/FITTING CNN
-# -----------------------
-
-import time
-
-start_time = time.time()
-
-# 1% of dataset
-
-monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
-model_CNN.fit(x_train_CNN, obs_train,
-          batch_size=batch_size,
-          epochs=100,
-          verbose=2,
-          validation_data=(x_test_CNN, obs_test),
-          callbacks=[monitor])
-
-elapsed_time = time.time() - start_time
-print("Elapsed time: {}".format(hms_string(elapsed_time)))
+    score_CNN = np.sqrt(metrics.mean_squared_error(pred_CNN, obs_test))
+    chart_regression(pred_CNN, obs_test)
+    print("Score (RMSE): {}".format(score_CNN))
